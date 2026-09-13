@@ -3004,6 +3004,19 @@ static void Reserve_Unit()
     }
 }
 
+// Sync debugging: append to the start-position report without overrunning it.
+static void Start_Report(char* buf, size_t size, const char* fmt, ...)
+{
+    size_t len = strlen(buf);
+    if (len + 1 >= size) {
+        return;
+    }
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buf + len, size - len, fmt, args);
+    va_end(args);
+}
+
 static void Create_Units(bool official)
 {
     static struct
@@ -3188,6 +3201,23 @@ static void Create_Units(bool official)
         }
     }
 
+    // Sync debugging: the start-position candidates and the random seed before the pick.
+    char report[640] = "";
+    Start_Report(report,
+                 sizeof(report),
+                 "SYNC start: scenario %s, official %d, players %d, AI %d, look_for %d, seed %08x, %d waypoints:",
+                 Scen.ScenarioName,
+                 (int)official,
+                 Session.Players.Count(),
+                 Session.Options.AIPlayers,
+                 look_for,
+                 (unsigned)Scen.RandomNumber.Seed,
+                 num_waypts);
+    for (int index = 0; index < num_waypts; index++) {
+        Start_Report(report, sizeof(report), " %d", (int)waypts[index]);
+    }
+    Start_Report(report, sizeof(report), "\n");
+
     /*
     **	Loop through all houses.  Computer-controlled houses, with Session.Options.Bases
     **	ON, are treated as though bases are OFF (since we have no base-building
@@ -3284,6 +3314,13 @@ static void Create_Units(bool official)
         **	Assign the center of this house to the waypoint location.
         */
         hptr->Center = Cell_Coord(centroid);
+        Start_Report(report,
+                     sizeof(report),
+                     "SYNC start: house %d (%s) takes waypoint %d, cell %d\n",
+                     (int)house,
+                     hptr->IniName,
+                     hptr->StartLocationOverride,
+                     (int)centroid);
 
         /*
         **	If Bases are ON, human & computer houses are treated differently
@@ -3438,6 +3475,14 @@ static void Create_Units(bool official)
                 }
             }
         }
+    }
+
+    // Also in STARTPOS.TXT (the writable data directory), for devices without a console.
+    fputs(report, stderr);
+    CDFileClass out("STARTPOS.TXT");
+    if (out.Open(WRITE)) {
+        out.Write(report, strlen(report));
+        out.Close();
     }
 }
 
