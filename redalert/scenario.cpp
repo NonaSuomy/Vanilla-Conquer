@@ -3218,6 +3218,31 @@ static void Create_Units(bool official)
     }
     Start_Report(report, sizeof(report), "\n");
 
+    // Which copy of the scenario was read: the mixfile holding it (or a loose
+    // file), and the size and CRC of its contents.
+    MFCD* scen_mix = NULL;
+    int scen_mix_size = 0;
+    bool in_mix = MFCD::Offset(Scen.ScenarioName, NULL, &scen_mix, NULL, &scen_mix_size);
+    CCFileClass scen_file(Scen.ScenarioName);
+    int scen_size = scen_file.Size();
+    int32_t scen_crc = 0;
+    if (scen_size > 0) {
+        char* scen_data = new char[scen_size];
+        if (scen_data != NULL && scen_file.Read(scen_data, scen_size) == scen_size) {
+            scen_crc = Calculate_CRC(scen_data, scen_size);
+        }
+        delete[] scen_data;
+        scen_file.Close();
+    }
+    Start_Report(report,
+                 sizeof(report),
+                 "SYNC start: %s from %s (mix size %d), read %d bytes, crc %08x\n",
+                 Scen.ScenarioName,
+                 in_mix && scen_mix != NULL ? scen_mix->Filename : "no mixfile",
+                 scen_mix_size,
+                 scen_size,
+                 (unsigned)scen_crc);
+
     /*
     **	Loop through all houses.  Computer-controlled houses, with Session.Options.Bases
     **	ON, are treated as though bases are OFF (since we have no base-building
