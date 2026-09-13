@@ -50,6 +50,16 @@ else()
         list(APPEND VC_CXX_FLAGS -fsigned-char)
     endif()
 
+    # Red Alert marks objects active in custom operator new before constructor runs.
+    # GCC lifetime dead-store elimination discards that store unless -fno-lifetime-dse is used.
+    message(STATUS "Checking whether compiler supports -fno-lifetime-dse")
+    check_cxx_compiler_flag("-Werror -fno-lifetime-dse" HAVE_NO_LIFETIME_DSE)
+
+    if(HAVE_NO_LIFETIME_DSE)
+        message(STATUS "yes")
+        list(APPEND VC_CXX_FLAGS -fno-lifetime-dse)
+    endif()
+
     # Not MSVC, but is WIN32... probably mingw
     if(WIN32)
         string(APPEND CMAKE_EXE_LINKER_FLAGS " -static-libstdc++ -static-libgcc")
