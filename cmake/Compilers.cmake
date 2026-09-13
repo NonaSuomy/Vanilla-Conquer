@@ -50,8 +50,10 @@ else()
         list(APPEND VC_CXX_FLAGS -fsigned-char)
     endif()
 
-    # Red Alert marks objects active in custom operator new before constructor runs.
-    # GCC lifetime dead-store elimination discards that store unless -fno-lifetime-dse is used.
+    # Pooled game objects set IsActive in operator new, before their constructor
+    # runs. GCC's lifetime dead-store elimination drops that store whenever the
+    # constructor is inlined, and the object then fails to place (e.g. every
+    # map tree), which also desyncs network games.
     message(STATUS "Checking whether compiler supports -fno-lifetime-dse")
     check_cxx_compiler_flag("-Werror -fno-lifetime-dse" HAVE_NO_LIFETIME_DSE)
 
