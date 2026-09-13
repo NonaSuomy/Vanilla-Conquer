@@ -124,8 +124,11 @@ static void Update_HWCursor_Settings()
     /*
     ** Update mouse scaling settings.
     */
-    int win_w, win_h;
+    int win_w = 0, win_h = 0;
     SDL_GetRendererOutputSize(renderer, &win_w, &win_h);
+    if (win_w <= 1 || win_h <= 1) {
+        return;
+    }
     hwcursor.ScaleX = win_w / (float)hwcursor.GameW;
     hwcursor.ScaleY = win_h / (float)hwcursor.GameH;
 
@@ -229,8 +232,14 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
         ** Native fullscreen if no proper width and height set.
         */
         if (Settings.Video.Width < w || Settings.Video.Height < h) {
-            win_w = Settings.Video.Width = 0;
-            win_h = Settings.Video.Height = 0;
+            SDL_DisplayMode dm;
+            if (SDL_GetDesktopDisplayMode(0, &dm) == 0 && dm.w > 0 && dm.h > 0) {
+                win_w = dm.w;
+                win_h = dm.h;
+            } else {
+                win_w = w;
+                win_h = h;
+            }
             win_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
         } else {
             win_w = Settings.Video.Width;
@@ -835,6 +844,16 @@ public:
             dst.h = hwcursor.Surface->h;
 
             SDL_BlitSurface(hwcursor.Surface, nullptr, windowSurface, &dst);
+        }
+
+        static int last_win_w = 0;
+        static int last_win_h = 0;
+        int cur_w = 0, cur_h = 0;
+        SDL_GetRendererOutputSize(renderer, &cur_w, &cur_h);
+        if (cur_w > 1 && cur_h > 1 && (cur_w != last_win_w || cur_h != last_win_h || render_dst.w <= 1 || render_dst.h <= 1)) {
+            last_win_w = cur_w;
+            last_win_h = cur_h;
+            Update_HWCursor_Settings();
         }
 
         SDL_UpdateTexture(texture, NULL, windowSurface->pixels, windowSurface->pitch);
