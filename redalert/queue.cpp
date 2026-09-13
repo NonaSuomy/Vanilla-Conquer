@@ -631,6 +631,9 @@ static void Queue_AI_Multiplayer(void)
     //	Sync debugging: with [SyncBug] PrintCRC=N in the INI every player writes
     // DESYNCLOG.TXT at frame N, so two machines' states can be compared.
     //------------------------------------------------------------------------
+    // Print_CRCs recomputes GameCRC as it writes, and this frame's FRAMEINFO
+    // event still has to send the real one, so keep it.
+    unsigned int frame_crc = GameCRC;
     if (Frame == Session.TrapPrintCRC) {
         Print_CRCs(NULL);
     }
@@ -641,6 +644,7 @@ static void Queue_AI_Multiplayer(void)
             Print_CRCs(NULL, name);
         }
     }
+    GameCRC = frame_crc;
 
     //------------------------------------------------------------------------
     //	If we've just started a game, or loaded a multiplayer game, we must
