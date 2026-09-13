@@ -729,6 +729,8 @@ void TerrainClass::Read_INI(CCINIClass& ini)
     TerrainClass* tptr;
 
     int len = ini.Entry_Count(INI_Name());
+    // Sync debugging: report how the scenario's terrain was placed.
+    int unknown = 0, placed = 0, rejected = 0;
 
     for (int index = 0; index < len; index++) {
         char const* entry = ini.Get_Entry(INI_Name(), index);
@@ -736,8 +738,39 @@ void TerrainClass::Read_INI(CCINIClass& ini)
         CELL cell = atoi(entry);
 
         if (terrain != TERRAIN_NONE) {
+            int before = Terrains.Count();
             tptr = new TerrainClass(terrain, cell);
+            if (Terrains.Count() > before) {
+                placed++;
+            } else if (rejected++ < 5) {
+                fprintf(stderr,
+                        "SYNC terrain: %s at cell %d not placed (object %s, theater mask %x, map theater %d)\n",
+                        TerrainTypeClass::As_Reference(terrain).IniName,
+                        cell,
+                        tptr ? "created" : "not created",
+                        TerrainTypeClass::As_Reference(terrain).Theater,
+                        (int)Scen.Theater);
+            }
+        } else {
+            unknown++;
         }
+    }
+    char report[160];
+    snprintf(report,
+             sizeof(report),
+             "SYNC terrain: %d entries, %d placed, %d rejected, %d unknown types, map theater %d, TerrainMax %d\n",
+             len,
+             placed,
+             rejected,
+             unknown,
+             (int)Scen.Theater,
+             Rule.TerrainMax);
+    fputs(report, stderr);
+    // Also in TERRAIN.TXT (the writable data directory), for devices without a console.
+    CDFileClass out("TERRAIN.TXT");
+    if (out.Open(WRITE)) {
+        out.Write(report, strlen(report));
+        out.Close();
     }
 }
 
