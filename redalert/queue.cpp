@@ -201,7 +201,10 @@ static void Queue_Playback(void);
 //...........................................................................
 static void Compute_Game_CRC(void);
 void Add_CRC(unsigned int* crc, unsigned int val);
-static void Print_CRCs(EventClass* ev);
+static void Print_CRCs(EventClass* ev, const char* file_name = "DESYNCLOG.TXT");
+// Sync debugging: every player of a network game writes SYNCnnn.TXT at these
+// frames, so two machines' game states can be compared line by line.
+static const int SyncDumpFrames[] = {1, 2, 15, 16, 27};
 static void Init_Queue_Mono(ConnManClass* net);
 static void Update_Queue_Mono(ConnManClass* net, int flow_index);
 static void Print_Framesync_Values(int curframe,
@@ -623,6 +626,21 @@ static void Queue_AI_Multiplayer(void)
     //------------------------------------------------------------------------
     Compute_Game_CRC();
     CRC[Frame & 0x001f] = GameCRC;
+
+    //------------------------------------------------------------------------
+    //	Sync debugging: with [SyncBug] PrintCRC=N in the INI every player writes
+    // DESYNCLOG.TXT at frame N, so two machines' states can be compared.
+    //------------------------------------------------------------------------
+    if (Frame == Session.TrapPrintCRC) {
+        Print_CRCs(NULL);
+    }
+    for (int dump_frame : SyncDumpFrames) {
+        if (Frame == dump_frame) {
+            char name[16];
+            snprintf(name, sizeof(name), "SYNC%03d.TXT", Frame);
+            Print_CRCs(NULL, name);
+        }
+    }
 
     //------------------------------------------------------------------------
     //	If we've just started a game, or loaded a multiplayer game, we must
@@ -3716,7 +3734,7 @@ void Add_CRC(unsigned int* crc, unsigned int val)
  * HISTORY:                                                                *
  *   05/09/1995 BRR : Created.                                             *
  *=========================================================================*/
-static void Print_CRCs(EventClass* ev)
+static void Print_CRCs(EventClass* ev, const char* file_name)
 {
     int i, j;
     InfantryClass* infp;
@@ -3732,7 +3750,7 @@ static void Print_CRCs(EventClass* ev)
     Mono_Clear_Screen();
     Mono_Set_Cursor(0, 0);
     CDFileClass fc;
-    fc.Open("DESYNCLOG.TXT", WRITE);
+    fc.Open(file_name, WRITE);
     if (!fc.Is_Available()) {
         return;
     }
@@ -3753,12 +3771,15 @@ static void Print_CRCs(EventClass* ev)
             color = housep->RemapColor;
             snprintf(buffer,
                      sizeof(buffer),
-                     "%s: IsHuman:%d  Color:%s  ID:%d  ActLike:%s\n",
+                     "%s: IsHuman:%d  Color:%s  ID:%d  ActLike:%s  Credits:%d  Power:%d  Drain:%d\n",
                      housep->IniName,
                      housep->IsHuman,
                      ColorNames[color],
                      housep->ID,
-                     HouseClass::As_Pointer(actlike)->Class->Name());
+                     HouseClass::As_Pointer(actlike)->Class->Name(),
+                     (int)housep->Credits,
+                     (int)housep->Power,
+                     (int)housep->Drain);
             fc.Write(buffer, strlen(buffer));
             Add_CRC(&GameCRC, (int)housep->Credits + (int)housep->Power + (int)housep->Drain);
             Mono_Printf("House %s:%x\n", housep->Class->Name(), GameCRC);
@@ -4047,6 +4068,8 @@ static void Print_CRCs(EventClass* ev)
 
     Mono_Printf("My Frame:%d  \n", Frame);
     snprintf(buffer, sizeof(buffer), "My Frame:%d\n", Frame);
+    fc.Write(buffer, strlen(buffer));
+    snprintf(buffer, sizeof(buffer), "My CRC:%08x\n", CRC[Frame & 0x001f]);
     fc.Write(buffer, strlen(buffer));
 
     if (ev) {
