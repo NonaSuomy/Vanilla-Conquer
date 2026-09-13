@@ -161,6 +161,7 @@ if(NETWORKING)
         ipxaddr.cpp
         wsproto.cpp
         wspudp.cpp
+        wsptcp.cpp
     )
 endif()
 

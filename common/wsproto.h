@@ -67,9 +67,11 @@ extern WinsockInterfaceClass* PacketTransport; // The object for interfacing wit
 #if defined _WIN32 && !defined SDL_BUILD
 #define WM_IPXASYNCEVENT (WM_USER + 115) // IPX socket Async event
 #define WM_UDPASYNCEVENT (WM_USER + 116) // UDP socket Async event
+#define WM_TCPASYNCEVENT (WM_USER + 117) // TCP socket Async event
 #else
 #define WM_IPXASYNCEVENT 1
 #define WM_UDPASYNCEVENT 2
+#define WM_TCPASYNCEVENT 3
 #endif
 
 /*
@@ -79,7 +81,8 @@ typedef enum tProtocolEnum
 {
     PROTOCOL_NONE,
     PROTOCOL_IPX,
-    PROTOCOL_UDP
+    PROTOCOL_UDP,
+    PROTOCOL_TCP
 } ProtocolEnum;
 
 /*
@@ -109,7 +112,7 @@ public:
     virtual void Stop_Listening(void);
     virtual void Clear_Socket_Error(SOCKET socket);
     virtual bool Set_Socket_Options(void);
-    virtual void Set_Broadcast_Address(void*){};
+    virtual void Set_Broadcast_Address(void*) {};
 
     virtual ProtocolEnum Get_Protocol(void)
     {

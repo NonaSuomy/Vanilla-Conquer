@@ -2,6 +2,7 @@
 #include "settings.h"
 #include "ini.h"
 #include "miscasm.h"
+#include "internet.h"
 
 SettingsClass Settings;
 
@@ -33,6 +34,14 @@ SettingsClass::SettingsClass()
     Video.Scaler = "nearest";
     Video.Driver = "default";
     Video.PixelFormat = "default";
+
+    /*
+    ** Network settings
+    */
+    Network.Protocol = "udp";
+    Network.Port = 1234;
+    Network.Host = "";
+    Network.TCPDiscovery = true;
 }
 
 void SettingsClass::Load(INIClass& ini)
@@ -89,6 +98,17 @@ void SettingsClass::Load(INIClass& ini)
     } else {
         Video.ButtonStyle = -1;
     }
+
+    /*
+    ** Network settings
+    */
+    Network.Protocol = ini.Get_String("Network", "Protocol", Network.Protocol);
+    Network.Port = ini.Get_Int("Network", "Port", Network.Port);
+    Network.Host = ini.Get_String("Network", "Host", Network.Host);
+    Network.TCPDiscovery = ini.Get_Bool("Network", "TCPDiscovery", Network.TCPDiscovery);
+    if (Network.Port > 0 && Network.Port <= 65535) {
+        PlanetWestwoodPortNumber = (unsigned short)Network.Port;
+    }
 }
 
 void SettingsClass::Save(INIClass& ini)
@@ -126,4 +146,14 @@ void SettingsClass::Save(INIClass& ini)
 
     ini.Put_String(
         "Video", "ButtonStyle", Video.ButtonStyle == -1 ? "Default" : (Video.ButtonStyle == 1 ? "Gold" : "Classic"));
+
+    /*
+    ** Network settings
+    */
+    ini.Put_String("Network", "Protocol", Network.Protocol);
+    ini.Put_Int("Network", "Port", Network.Port);
+    if (!Network.Host.empty()) {
+        ini.Put_String("Network", "Host", Network.Host);
+    }
+    ini.Put_Bool("Network", "TCPDiscovery", Network.TCPDiscovery);
 }

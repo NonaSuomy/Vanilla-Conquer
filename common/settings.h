@@ -43,6 +43,14 @@ public:
     {
         bool MouseWheelScrolling;
     } Options;
+
+    struct
+    {
+        std::string Protocol;
+        int Port;
+        std::string Host;
+        bool TCPDiscovery;
+    } Network;
 };
 
 extern SettingsClass Settings;

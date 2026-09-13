@@ -64,7 +64,9 @@
 #ifdef NETWORKING
 #include "wsproto.h"
 #include "wspudp.h"
+#include "wsptcp.h"
 #include "internet.h"
+#include "common/settings.h"
 #endif
 
 #include <time.h>
@@ -900,7 +902,11 @@ bool Select_Game(bool fade)
                     if (PacketTransport)
                         delete PacketTransport;
 #ifdef NETWORKING
-                    PacketTransport = new UDPInterfaceClass;
+                    if (!stricmp(Settings.Network.Protocol.c_str(), "tcp")) {
+                        PacketTransport = new TCPInterfaceClass;
+                    } else {
+                        PacketTransport = new UDPInterfaceClass;
+                    }
 #endif
                     assert(PacketTransport != NULL);
                     if (PacketTransport->Init()) {
@@ -951,7 +957,11 @@ bool Select_Game(bool fade)
                     if (PacketTransport)
                         delete PacketTransport;
 
-                    PacketTransport = new UDPInterfaceClass;
+                    if (!stricmp(Settings.Network.Protocol.c_str(), "tcp")) {
+                        PacketTransport = new TCPInterfaceClass;
+                    } else {
+                        PacketTransport = new UDPInterfaceClass;
+                    }
                     assert(PacketTransport != NULL);
 
                     WWDebugString("RA95 - About to call Init_Network.\n");
@@ -1474,6 +1484,35 @@ bool Parse_Command_Line(int argc, char* argv[])
         */
         if (strstr(string, "-ATTRACT")) {
             Session.Attract = true;
+            continue;
+        }
+
+        if (stricmp(string, "-TCP") == 0) {
+            Settings.Network.Protocol = "tcp";
+            continue;
+        }
+
+        if (stricmp(string, "-UDP") == 0) {
+            Settings.Network.Protocol = "udp";
+            continue;
+        }
+
+        if (strnicmp(string, "-PORT:", 6) == 0) {
+            int port = atoi(string + 6);
+            if (port > 0 && port <= 65535) {
+                Settings.Network.Port = port;
+                PlanetWestwoodPortNumber = (unsigned short)port;
+            }
+            continue;
+        }
+
+        if (strnicmp(string, "-HOST:", 6) == 0) {
+            Settings.Network.Host = string + 6;
+            continue;
+        }
+
+        if (stricmp(string, "-NOTCPDISCOVERY") == 0) {
+            Settings.Network.TCPDiscovery = false;
             continue;
         }
 
