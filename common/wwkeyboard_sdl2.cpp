@@ -84,6 +84,7 @@ void WWKeyboardClassSDL2::Fill_Buffer_From_System(void)
             Put_Mouse_Message(key, x, y, event.type == SDL_MOUSEBUTTONDOWN ? false : true);
         } break;
         case SDL_WINDOWEVENT:
+            Handle_Video_Window_Event(event.window.event, event.window.data1, event.window.data2);
             switch (event.window.event) {
             case SDL_WINDOWEVENT_EXPOSED:
             case SDL_WINDOWEVENT_RESTORED:

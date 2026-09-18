@@ -52,7 +52,7 @@ static SDL_Window* window;
 static SDL_Renderer* renderer;
 static SDL_Palette* palette;
 static Uint32 pixel_format;
-static SDL_Rect render_dst;
+static SDL_Rect render_dst = {0, 0, 1, 1};
 
 static struct
 {
@@ -181,6 +181,30 @@ static void Update_HWCursor_Settings()
     Update_HWCursor();
 }
 
+void Handle_Video_Window_Event(int event, int data1, int data2)
+{
+    (void)data1;
+    (void)data2;
+
+    // Wayland applies window and fullscreen changes asynchronously.  SDL2
+    // reports the completed state through window events; refresh the renderer
+    // output size there instead of polling it during every frame.
+    switch (event) {
+    case SDL_WINDOWEVENT_SHOWN:
+    case SDL_WINDOWEVENT_EXPOSED:
+    case SDL_WINDOWEVENT_RESIZED:
+    case SDL_WINDOWEVENT_SIZE_CHANGED:
+    case SDL_WINDOWEVENT_RESTORED:
+    case SDL_WINDOWEVENT_DISPLAY_CHANGED:
+        if (renderer != nullptr) {
+            Update_HWCursor_Settings();
+        }
+        break;
+    default:
+        break;
+    }
+}
+
 class SurfaceMonitorClassDummy : public SurfaceMonitorClass
 {
 
@@ -232,14 +256,12 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
         ** Native fullscreen if no proper width and height set.
         */
         if (Settings.Video.Width < w || Settings.Video.Height < h) {
-            SDL_DisplayMode dm;
-            if (SDL_GetDesktopDisplayMode(0, &dm) == 0 && dm.w > 0 && dm.h > 0) {
-                win_w = dm.w;
-                win_h = dm.h;
-            } else {
-                win_w = w;
-                win_h = h;
-            }
+            // SDL_WINDOW_FULLSCREEN_DESKTOP ignores the requested size when
+            // it enters fullscreen, but Wayland still needs valid logical
+            // dimensions while the compositor settles the window.  Do not
+            // pass monitor pixels or zero to SDL_CreateWindow().
+            win_w = w;
+            win_h = h;
             win_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
         } else {
             win_w = Settings.Video.Width;
@@ -359,7 +381,11 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
     hwcursor.GameH = h;
     hwcursor.X = w / 2;
     hwcursor.Y = h / 2;
-    Update_HWCursor_Settings();
+    hwcursor.ScaleX = 1.0f;
+    hwcursor.ScaleY = 1.0f;
+    render_dst = {0, 0, w, h};
+    Set_Video_Cursor_Clip(hwcursor.Clip);
+    Update_HWCursor();
 
     /*
     ** Init gamepad.
@@ -387,8 +413,6 @@ void Toggle_Video_Fullscreen()
         SDL_SetWindowFullscreen(window, 0);
         SDL_SetWindowSize(window, Settings.Video.WindowWidth, Settings.Video.WindowHeight);
     }
-
-    Update_HWCursor_Settings();
 }
 
 void Get_Video_Scale(float& x, float& y)
@@ -844,16 +868,6 @@ public:
             dst.h = hwcursor.Surface->h;
 
             SDL_BlitSurface(hwcursor.Surface, nullptr, windowSurface, &dst);
-        }
-
-        static int last_win_w = 0;
-        static int last_win_h = 0;
-        int cur_w = 0, cur_h = 0;
-        SDL_GetRendererOutputSize(renderer, &cur_w, &cur_h);
-        if (cur_w > 1 && cur_h > 1 && (cur_w != last_win_w || cur_h != last_win_h || render_dst.w <= 1 || render_dst.h <= 1)) {
-            last_win_w = cur_w;
-            last_win_h = cur_h;
-            Update_HWCursor_Settings();
         }
 
         SDL_UpdateTexture(texture, NULL, windowSurface->pixels, windowSurface->pitch);
