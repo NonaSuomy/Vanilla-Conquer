@@ -21,6 +21,10 @@
 #include <cmath>
 #include <SDL.h>
 
+// SDL2 window-event handling exists only in video_sdl2.cpp. Keep this forward
+// declaration local to the SDL2 event pump, not in the cross-backend header.
+void Handle_Video_Window_Event(int event, int data1, int data2);
+
 void Focus_Loss();
 void Focus_Restore();
 void Process_Network();
